@@ -18,13 +18,11 @@ namespace MMercan.Common.Tests.ExpressionTests
 
 
             ParameterExpression num = Expression.Parameter(typeof(int), "num");
-            //Expression numvar = Expression.
 
             Expression cons = Expression.Constant(5);
-
             BinaryExpression gt = Expression.GreaterThan(num, cons);
-            var ex = Expression.Lambda<Func<int, bool>>(gt, new ParameterExpression[] { num });
 
+            var ex = Expression.Lambda<Func<int, bool>>(gt, new ParameterExpression[] { num });
             var comp = ex.Compile();
             var res = comp.Invoke(9);
             Assert.True(res);
@@ -97,6 +95,107 @@ namespace MMercan.Common.Tests.ExpressionTests
             Expression<Func<int, int, bool>> exp = Expression.Lambda<Func<int, int, bool>>(com, new ParameterExpression[] { p1, p2 });
             var rees = exp.Compile()(5, 10);
             Assert.False(rees);
+        }
+
+        [Fact]
+        public void callComp()
+        {
+            ParameterExpression param = Expression.Parameter(typeof(Company), "company");
+            Expression paramid = Expression.Property(param, typeof(Company).GetProperty("Id"));
+
+
+
+            Expression assignid = Expression.Assign(paramid, Expression.Constant(3));
+
+            Expression paramName = Expression.Property(param, typeof(Company).GetProperty("Name"));
+            Expression assignname = Expression.Assign(paramName, Expression.Constant("Bupa"));
+
+
+
+            NewExpression ex = Expression.New(typeof(Company).GetConstructor(System.Type.EmptyTypes));
+
+
+
+            var lambda = LambdaExpression.Lambda(ex);
+            // var res = lambda.Compile();
+            object myObj = lambda.Compile().DynamicInvoke();
+
+
+            var setter = Expression.Lambda<Action<Company>>(assignid, new ParameterExpression[] { param }).Compile().DynamicInvoke();
+
+
+            //var comp1 = new Company
+            Assert.NotNull(myObj);
+
+        }
+
+
+        Expression<Func<int,string, Company>> BuildLambda()
+        {
+            var createdType = typeof(Company);
+            var ctor = Expression.New(createdType);
+
+            var idParam = Expression.Parameter(typeof(int), "Id");
+            var idValueAssignment = Expression.Bind(createdType.GetProperty("Id"), idParam);
+
+            var NameParam = Expression.Parameter(typeof(string), "Name");
+            var NameValueAssignment = Expression.Bind(createdType.GetProperty("Name"), NameParam);
+
+
+            var memberInitId = Expression.MemberInit(ctor, idValueAssignment);
+
+            var memberInitName = Expression.MemberInit(ctor, NameValueAssignment);
+
+            //LambdaExpression sss= Expression.Lambda
+            var exxx = Expression.Block(new ParameterExpression[] { idParam, NameParam }, new Expression[] { memberInitId , memberInitName });
+            
+            return
+                Expression.Lambda<Func<int,string, Company>>(memberInitName, NameParam);
+        }
+
+        [Fact]
+        public void newnew()
+        {
+
+          var qqq=  BuildLambda().Compile()(12,"Bupa");
+            Assert.NotNull(qqq);
+        }
+
+
+        [Fact]
+        public void newnewnew()
+        {
+
+            var expectedType = typeof(Company);
+            var ctor = Expression.New(expectedType);
+            var local = Expression.Parameter(expectedType, "obj");
+
+            var NameParam = Expression.Parameter(typeof(string), "Name");
+            var NameProperty = Expression.Property(local, "Name");
+
+            var idParam = Expression.Parameter(typeof(int), "Id");
+            var idProperty = Expression.Property(local, "Id");
+
+            var returnTarget = Expression.Label(expectedType);
+            var returnExpression = Expression.Return(returnTarget, local, expectedType);
+            var returnLabel = Expression.Label(returnTarget, Expression.Default(expectedType));
+
+            var block = Expression.Block(
+                new[] { local },
+                Expression.Assign(local, ctor),
+                Expression.Assign(NameProperty, NameParam),
+
+                Expression.Assign(idProperty, idParam),
+                returnExpression,
+                returnLabel
+                );
+            var comp =Expression.Lambda<Func<string,int, Company>>(block, NameParam, idParam).Compile();
+            //var comp = Expression.Lambda<Func<string, int, dynamic>>(block, NameParam, idParam).Compile();
+
+            dynamic res = comp("Bupa",12);
+
+            Assert.NotNull(res);
+
         }
     }
 
